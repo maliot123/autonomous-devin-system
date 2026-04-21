@@ -1,11 +1,10 @@
-"""Background task worker using Redis + RQ (or in-process fallback)."""
+"""Background task worker using Redis + RQ (or database-polling fallback)."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
-from typing import Optional
 
 from app.agents.dispatcher_agent import DispatcherAgent
 from app.agents.execution_agent import ExecutionAgent
@@ -15,15 +14,12 @@ from app.database.db import get_db, init_db
 
 logger = logging.getLogger(__name__)
 
-# In-memory queue used when Redis is unavailable
-_task_queue: list[str] = []
-
 
 def enqueue_task(task_id: str) -> None:
     """Add a task to the processing queue.
 
-    Attempts to use Redis (via ``rq``) first.  Falls back to an in-memory
-    list that :func:`run_worker` drains.
+    Attempts to use Redis (via ``rq``) first.  Falls back to marking the
+    task as QUEUED in the database so the worker can pick it up by polling.
     """
     settings = get_settings()
     try:
@@ -31,12 +27,12 @@ def enqueue_task(task_id: str) -> None:
         from rq import Queue
 
         conn = Redis.from_url(settings.redis_url)
+        conn.ping()
         q = Queue(connection=conn)
         q.enqueue(_process_task_sync, task_id)
         logger.info("Task %s enqueued via Redis/RQ", task_id)
     except Exception:
-        logger.warning("Redis unavailable — using in-memory queue")
-        _task_queue.append(task_id)
+        logger.warning("Redis unavailable — marking task QUEUED for DB polling")
         db = get_db()
         db.update_task_status(task_id, TaskStatus.QUEUED)
 
@@ -74,17 +70,21 @@ async def _process_task(task_id: str) -> None:
 
 
 def run_worker() -> None:
-    """Run a simple polling worker that drains the in-memory queue.
+    """Poll the database for QUEUED tasks and process them.
 
-    In production, use ``rq worker`` instead.
+    In production with Redis available, use ``rq worker`` instead.
+    When Redis is down, the API marks tasks as QUEUED in the database
+    and this loop picks them up — works across separate processes.
     """
     init_db()
-    logger.info("Worker started (in-memory mode)")
+    logger.info("Worker started (database-polling mode)")
     while True:
-        if _task_queue:
-            task_id = _task_queue.pop(0)
+        db = get_db()
+        queued_tasks = db.list_tasks(status=TaskStatus.QUEUED, limit=10)
+        for task in queued_tasks:
+            logger.info("Picking up queued task %s from database", task.task_id)
             try:
-                asyncio.run(_process_task(task_id))
+                asyncio.run(_process_task(task.task_id))
             except Exception:
-                logger.exception("Worker error processing task %s", task_id)
+                logger.exception("Worker error processing task %s", task.task_id)
         time.sleep(2)

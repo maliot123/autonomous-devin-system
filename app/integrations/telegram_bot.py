@@ -47,20 +47,17 @@ async def _post_task(
 # ── Command handlers ────────────────────────────────────────────────────
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.send_message(
-        chat_id=update.effective_chat.id,
-        text=(
-            "Autonomous Engineering System\n\n"
-            "Commands:\n"
-            "/start - Show this message\n"
-            "/status - System status\n"
-            "/agents - List agents\n"
-            "/build <description> - Generate code\n"
-            "/task <description> - Create generic task\n"
-            "/repo <url> - Analyze repository\n"
-            "/deploy <description> - Setup deployment\n"
-            "/logs [task_id] - View logs\n"
-        ),
+    await update.message.reply_text(
+        "Autonomous Engineering System\n\n"
+        "Commands:\n"
+        "/start - Show this message\n"
+        "/status - System status\n"
+        "/agents - List agents\n"
+        "/build <description> - Generate code\n"
+        "/task <description> - Create generic task\n"
+        "/repo <url> - Analyze repository\n"
+        "/deploy <description> - Setup deployment\n"
+        "/logs [task_id] - View logs\n"
     )
 
 
