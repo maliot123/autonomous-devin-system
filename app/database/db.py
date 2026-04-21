@@ -6,7 +6,7 @@ import logging
 import os
 from typing import Optional
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import TaskStatus, get_settings
@@ -83,6 +83,22 @@ class DatabaseManager:
             session.commit()
             session.refresh(task)
             return task
+
+    def claim_task(self, task_id: str) -> bool:
+        """Atomically transition a task from QUEUED to IN_PROGRESS.
+
+        Returns ``True`` if the claim succeeded (the task was still QUEUED),
+        ``False`` otherwise (already claimed by another worker).
+        """
+        with _get_session() as session:
+            stmt = (
+                update(Task)
+                .where(Task.task_id == task_id, Task.status == TaskStatus.QUEUED)
+                .values(status=TaskStatus.IN_PROGRESS)
+            )
+            result = session.execute(stmt)
+            session.commit()
+            return result.rowcount > 0
 
     def list_tasks(
         self, status: Optional[TaskStatus] = None, limit: int = 50

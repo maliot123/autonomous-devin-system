@@ -83,8 +83,8 @@ def run_worker() -> None:
         db = get_db()
         queued_tasks = db.list_tasks(status=TaskStatus.QUEUED, limit=10)
         for task in queued_tasks:
-            claimed = db.update_task_status(task.task_id, TaskStatus.IN_PROGRESS)
-            if claimed is None or claimed.status != TaskStatus.IN_PROGRESS:
+            if not db.claim_task(task.task_id):
+                logger.debug("Task %s already claimed by another worker", task.task_id)
                 continue
             logger.info("Claimed task %s for processing", task.task_id)
             try:
