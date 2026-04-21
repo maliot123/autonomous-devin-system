@@ -91,4 +91,12 @@ def run_worker() -> None:
                 asyncio.run(_process_task(task.task_id))
             except Exception:
                 logger.exception("Worker error processing task %s", task.task_id)
+                try:
+                    db.update_task_status(
+                        task.task_id,
+                        TaskStatus.FAILED,
+                        error="Worker error: unhandled exception during processing",
+                    )
+                except Exception:
+                    logger.exception("Failed to mark task %s as FAILED", task.task_id)
         time.sleep(2)
