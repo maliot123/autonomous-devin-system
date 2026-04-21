@@ -83,7 +83,10 @@ def run_worker() -> None:
         db = get_db()
         queued_tasks = db.list_tasks(status=TaskStatus.QUEUED, limit=10)
         for task in queued_tasks:
-            logger.info("Picking up queued task %s from database", task.task_id)
+            claimed = db.update_task_status(task.task_id, TaskStatus.IN_PROGRESS)
+            if claimed is None or claimed.status != TaskStatus.IN_PROGRESS:
+                continue
+            logger.info("Claimed task %s for processing", task.task_id)
             try:
                 asyncio.run(_process_task(task.task_id))
             except Exception:

@@ -4,5 +4,7 @@ from app.core.logging_setup import setup_logging
 from app.workers.worker import run_worker
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv()
     setup_logging()
     run_worker()
