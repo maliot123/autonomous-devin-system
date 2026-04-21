@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def _api_base() -> str:
     s = get_settings()
-    return f"http://{s.api_host}:{s.api_port}"
+    return s.api_base_url
 
 
 async def _post_task(

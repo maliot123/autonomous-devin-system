@@ -76,6 +76,9 @@ class Settings:
     api_port: int = field(
         default_factory=lambda: int(os.getenv("API_PORT", "8000"))
     )
+    api_base_url: str = field(
+        default_factory=lambda: os.getenv("API_BASE_URL", "http://localhost:8000")
+    )
 
     # Logging
     log_level: str = field(

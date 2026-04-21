@@ -21,6 +21,9 @@ def enqueue_task(task_id: str) -> None:
     Attempts to use Redis (via ``rq``) first.  Falls back to marking the
     task as QUEUED in the database so the worker can pick it up by polling.
     """
+    db = get_db()
+    db.update_task_status(task_id, TaskStatus.QUEUED)
+
     settings = get_settings()
     try:
         from redis import Redis
@@ -32,9 +35,7 @@ def enqueue_task(task_id: str) -> None:
         q.enqueue(_process_task_sync, task_id)
         logger.info("Task %s enqueued via Redis/RQ", task_id)
     except Exception:
-        logger.warning("Redis unavailable — marking task QUEUED for DB polling")
-        db = get_db()
-        db.update_task_status(task_id, TaskStatus.QUEUED)
+        logger.warning("Redis unavailable — worker will pick up task via DB polling")
 
 
 def _process_task_sync(task_id: str) -> None:
