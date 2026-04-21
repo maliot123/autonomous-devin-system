@@ -107,7 +107,7 @@ async def create_task(req: TaskCreateRequest) -> TaskCreateResponse:
     return TaskCreateResponse(
         task_id=task.task_id,
         status="queued",
-        message=f"Task queued for execution via {plan['task_type']}",
+        message=f"Task queued for execution via {req.task_type.value}",
     )
 
 
@@ -126,10 +126,10 @@ async def get_task_status(task_id: str) -> TaskStatusResponse:
 async def get_task_result(task_id: str) -> dict[str, Any]:
     """Get the result of a completed task."""
     agent = ResultAgent()
-    result = agent.format_api_response(task_id)
-    if "error" in result and result["error"] == "Task not found":
+    data = agent.get_result(task_id)
+    if data is None:
         raise HTTPException(status_code=404, detail="Task not found")
-    return result
+    return data
 
 
 @app.get("/system/status", response_model=SystemStatusResponse)

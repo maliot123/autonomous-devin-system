@@ -114,7 +114,11 @@ async def cmd_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("Usage: /task <description>")
         return
     try:
-        result = await _post_task(TaskType.CODE_GENERATION, description)
+        from app.agents.planner_agent import PlannerAgent
+
+        planner = PlannerAgent()
+        inferred_type = TaskType(planner._infer_task_type(description))
+        result = await _post_task(inferred_type, description)
         await update.message.reply_text(
             f"Task created: {result['task_id']}\nStatus: {result['status']}"
         )

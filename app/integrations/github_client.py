@@ -56,7 +56,10 @@ class GitHubClient:
         )
         _, stderr = await proc.communicate()
         if proc.returncode != 0:
-            raise RuntimeError(f"git clone failed: {stderr.decode()}")
+            error_msg = stderr.decode()
+            if self.token:
+                error_msg = error_msg.replace(self.token, "***")
+            raise RuntimeError(f"git clone failed: {error_msg}")
         logger.info("Cloned %s → %s", repo_url, dest)
         return dest
 
